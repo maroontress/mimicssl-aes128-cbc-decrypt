@@ -1,0 +1,3 @@
+[submodule "lighter"]
+	path = lighter
+	url = git@github.com:maroontress/lighter.git

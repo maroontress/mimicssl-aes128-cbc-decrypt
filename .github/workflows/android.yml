@@ -1,0 +1,83 @@
+name: CMake (Android)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        abi: [x86_64, x86, arm64-v8a, armeabi-v7a]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          lfs: true
+
+      - name: Build ${{matrix.abi}}
+        run: |
+          sh build-android.sh ${{matrix.abi}} -DBUILD_TESTSUITE=OFF -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
+          cmake --install build-${{matrix.abi}}
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: android
+          path: ~/android/
+
+  test:
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        abi: [x86_64]
+    runs-on: ${{matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          lfs: true
+
+      - name: AVD cache
+        uses: actions/cache@v3
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: hostos-${{matrix.os}}-api-21-abi-${{matrix.abi}}
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
+          api-level: 21
+          arch: ${{matrix.abi}}
+          ndk: 25.2.9519653
+          force-avd-creation: false
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+      - name: Run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
+          api-level: 21
+          arch: ${{matrix.abi}}
+          ndk: 25.2.9519653
+          force-avd-creation: false
+          disable-animations: true
+          script: sh build-android.sh ${{matrix.abi}} -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-testsuite-${{matrix.os}}-${{matrix.abi}}
+          path: build-${{matrix.abi}}/testsuite/log.txt

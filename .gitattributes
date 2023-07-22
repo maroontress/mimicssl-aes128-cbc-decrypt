@@ -1,0 +1,2 @@
+*.decrypted filter=lfs diff=lfs merge=lfs -text
+*.encrypted filter=lfs diff=lfs merge=lfs -text
