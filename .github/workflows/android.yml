@@ -11,26 +11,57 @@ env:
 
 jobs:
   build:
-    runs-on: macos-latest
     timeout-minutes: 30
     strategy:
       matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
         abi: [x86_64, x86, arm64-v8a, armeabi-v7a]
+    runs-on: ${{matrix.os}}
 
     steps:
+      - name: Set up env
+        shell: bash
+        run: |
+          echo home_bin="$HOME/bin" >> "$GITHUB_ENV"
+          echo ninja="$HOME/bin/ninja" >> "$GITHUB_ENV"
+      - name: Set up on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo ninja_zip="ninja-win.zip" >> "$GITHUB_ENV"
+          echo android_ndk="$(cygpath -u $ANDROID_NDK)" >> "$GITHUB_ENV"
+      - name: Set up on Linux
+        if: runner.os == 'Linux'
+        run: |
+          echo ninja_zip="ninja-linux.zip" >> "$GITHUB_ENV"
+          echo android_ndk="$ANDROID_NDK" >> "$GITHUB_ENV"
+      - name: Set up on macOS
+        if: runner.os == 'macOS'
+        run: |
+          echo ninja_zip="ninja-mac.zip" >> "$GITHUB_ENV"
+          echo android_ndk="$ANDROID_NDK" >> "$GITHUB_ENV"
+      - name: Install ninja
+        shell: bash
+        run: |
+          mkdir -p ${{env.home_bin}}
+          curl -L -o ninja.zip "https://github.com/ninja-build/ninja/releases/download/v1.11.1/${{env.ninja_zip}}"
+          unzip ninja.zip -d ${{env.home_bin}}
+
       - uses: actions/checkout@v3
         with:
           submodules: true
           lfs: true
-
       - name: Build ${{matrix.abi}}
+        shell: bash
         run: |
-          sh build-android.sh ${{matrix.abi}} -DBUILD_TESTSUITE=OFF -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
+          sh build-android.sh ${{matrix.abi}} -G Ninja -DCMAKE_MAKE_PROGRAM=${{env.ninja}} -DBUILD_TESTSUITE=OFF -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
           cmake --install build-${{matrix.abi}}
+        env:
+          ANDROID_NDK: ${{env.android_ndk}}
       - name: Archive artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: android
+          name: android-${{matrix.os}}
           path: ~/android/
 
   test:
