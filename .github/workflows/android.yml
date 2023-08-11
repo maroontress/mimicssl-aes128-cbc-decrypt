@@ -2,7 +2,7 @@ name: CMake (Android)
 
 on:
   push:
-    branches: [main]
+    branches: [main, windows]
   pull_request:
     branches: [main]
 
@@ -11,21 +11,26 @@ env:
 
 jobs:
   build:
-    runs-on: macos-latest
     timeout-minutes: 30
     strategy:
       matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
         abi: [x86_64, x86, arm64-v8a, armeabi-v7a]
+    runs-on: ${{matrix.os}}
 
     steps:
+      - name: Install ninja-build tool
+        uses: seanmiddleditch/gha-setup-ninja@v3
+        with:
+          version: 1.11.1
+
       - uses: actions/checkout@v3
         with:
           submodules: true
           lfs: true
-
       - name: Build ${{matrix.abi}}
         run: |
-          sh build-android.sh ${{matrix.abi}} -DBUILD_TESTSUITE=OFF -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
+          sh build-android.sh ${{matrix.abi}} -G Ninja -DCMAKE_MAKE_PROGRAM=ninja-build/ninja -DBUILD_TESTSUITE=OFF -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
           cmake --install build-${{matrix.abi}}
       - name: Archive artifacts
         uses: actions/upload-artifact@v3
