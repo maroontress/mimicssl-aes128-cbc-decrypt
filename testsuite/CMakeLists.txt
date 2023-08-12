@@ -7,8 +7,16 @@ file(COPY
 
 enable_testing()
 
-add_executable(testsuite
-    main.cxx expect.hxx expect_fallback.hxx)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin"
+        AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
+    set(SOURCES aarch64_main.cxx)
+else()
+    set(SOURCES main.cxx)
+endif()
+
+add_executable(testsuite 
+    ${SOURCES}
+    expect.hxx expect_fallback.hxx)
 
 target_include_directories(testsuite PRIVATE
     mimicssl-aes128-cbc-decrypt
