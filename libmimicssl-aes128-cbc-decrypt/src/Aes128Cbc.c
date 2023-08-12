@@ -54,13 +54,13 @@ keyExpansion(const struct Aes128Cbc_Key *key, struct Aes128Cbc_RoundKey *out)
 }
 
 static struct State
-addRoundKey(const struct State *state, const uint8_t *key)
+addRoundKey(const struct State *state, const struct Aes128Cbc_Key *key)
 {
     struct State newState;
 
     uint32_t *out = (uint32_t *)newState.data;
     uint32_t *v = (uint32_t *)state->data;
-    uint32_t *r = (uint32_t *)key;
+    uint32_t *r = (uint32_t *)key->data;
     out[0] = v[0] ^ r[0];
     out[1] = v[1] ^ r[1];
     out[2] = v[2] ^ r[2];
@@ -153,30 +153,52 @@ xorWithIv(const struct State *state, const uint8_t *iv)
     return newState;
 }
 
+static void
+postKeyExpansion(struct Aes128Cbc_RoundKey *roundKey)
+{
+    for (int k = 1; k < 10; ++k) {
+        struct Aes128Cbc_Key *key = &roundKey->round[k];
+        struct State state;
+        uint32_t *o = (uint32_t *)key->data;
+        uint32_t *s = (uint32_t *)state.data;
+        s[0] = o[0];
+        s[1] = o[1];
+        s[2] = o[2];
+        s[3] = o[3];
+        struct State newState = invMixColumns(&state);
+        uint32_t *n = (uint32_t *)newState.data;
+        o[0] = n[0];
+        o[1] = n[1];
+        o[2] = n[2];
+        o[3] = n[3];
+    }
+}
+
 void
 Aes128Cbc_init(struct Aes128Cbc *ctx, const struct Aes128Cbc_Key *key,
     const struct Aes128Cbc_Iv *iv)
 {
     keyExpansion(key, &ctx->roundKey);
+    postKeyExpansion(&ctx->roundKey);
     ctx->iv = *iv;
 }
 
 static struct State
-invCipher(const struct State *state, const struct Aes128Cbc_RoundKey *roundKey)
+eqInvCipher(const struct State *state, const struct Aes128Cbc_RoundKey *roundKey)
 {
     const struct Aes128Cbc_Key *key = &roundKey->round[10];
-    struct State newState = addRoundKey(state, key->data);
-    newState = invShiftRows(&newState);
-    newState = invSubBytes(&newState);
-    --key;
+    struct State newState = addRoundKey(state, key);
     for (uint32_t round = 9; round > 0; --round) {
-        newState = addRoundKey(&newState, key->data);
-        newState = invMixColumns(&newState);
-        newState = invShiftRows(&newState);
-        newState = invSubBytes(&newState);
         --key;
+        newState = invSubBytes(&newState);
+        newState = invShiftRows(&newState);
+        newState = invMixColumns(&newState);
+        newState = addRoundKey(&newState, key);
     }
-    return addRoundKey(&newState, key->data);
+    --key;
+    newState = invSubBytes(&newState);
+    newState = invShiftRows(&newState);
+    return addRoundKey(&newState, key);
 }
 
 void Aes128Cbc_decrypt(struct Aes128Cbc *ctx, const void *data,
@@ -195,7 +217,7 @@ void Aes128Cbc_decrypt(struct Aes128Cbc *ctx, const void *data,
             o[2] = v[2];
             o[3] = v[3];
         }
-        state = invCipher(&state, &ctx->roundKey);
+        state = eqInvCipher(&state, &ctx->roundKey);
         state = xorWithIv(&state, iv);
         {
             const uint32_t *v = (const uint32_t *)state.data;
