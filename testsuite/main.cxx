@@ -112,6 +112,21 @@ toArray(const std::string& m) -> std::array<std::uint8_t, 16>
 #include "evp.h"
 
 static auto
+toKey(const std::string& m) -> Aes128Cbc_Key
+{
+    Aes128Cbc_Key key;
+
+    auto array = toArray(m);
+    uint32_t *v = (uint32_t *)array.data();
+    uint32_t *o = (uint32_t *)key.data;
+    o[0] = v[0];
+    o[1] = v[1];
+    o[2] = v[2];
+    o[3] = v[3];
+    return key;
+}
+
+static auto
 toState(const std::string& m) -> State
 {
     struct State state;
@@ -274,8 +289,8 @@ main(int ac, char** av)
     });
     driver.add("addRoundKey", [] {
         auto state = toState("000102030405060708090a0b0c0d0e0f");
-        auto key = toArray("d41d8cd98f00b204e9800998ecf8427e");
-        auto newState = addRoundKey(&state, key.data());
+        auto key = toKey("d41d8cd98f00b204e9800998ecf8427e");
+        auto newState = addRoundKey(&state, &key);
         dump(newState);
         auto actual = newState.data;
         auto expected = toArray("d41c8eda8b05b403e1890393e0f54c71");
@@ -324,14 +339,15 @@ main(int ac, char** av)
             expect(actual[k]) == expected[k];
         }
     });
-    driver.add("invCipher (test vector)", [] {
+    driver.add("eqInvCipher (test vector)", [] {
         auto state = toState("69c4e0d86a7b0430d8cdb78070b4c55a");
         auto key = toArray("000102030405060708090a0b0c0d0e0f");
         struct Aes128Cbc_Key k;
         std::memcpy(k.data, &key[0], 16);
         struct Aes128Cbc_RoundKey roundKey;
         keyExpansion(&k, &roundKey);
-        auto newState = invCipher(&state, &roundKey);
+        postKeyExpansion(&roundKey);
+        auto newState = eqInvCipher(&state, &roundKey);
         dump(newState);
         auto actual = newState.data;
         auto expected = toArray("00112233445566778899aabbccddeeff");
