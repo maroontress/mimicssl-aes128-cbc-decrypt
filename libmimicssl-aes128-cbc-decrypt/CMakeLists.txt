@@ -18,7 +18,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin"
     set(SOURCES src/evp.c src/aarch64_Aes128Cbc.c)
 elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
     set(OPTIONS -msse3 -maes)
-    set(SOURCES src/evp.c src/x86_64-aesni-Aes128Cbc.c)
+    set(SOURCES src/evp.c src/x86_64_Aes128Cbc.c)
 else()
     set(SOURCES src/evp.c src/Aes128Cbc.c)
 endif()

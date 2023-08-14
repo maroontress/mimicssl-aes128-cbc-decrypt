@@ -68,8 +68,8 @@ Aes128Cbc_init(struct Aes128Cbc *ctx, const struct Aes128Cbc_Key *key,
     ctx->iv = *iv;
 }
 
-static uint16x8_t
-eqInvCipher(uint16x8_t state, const struct Aes128Cbc_RoundKey *roundKey)
+static uint8x16_t
+eqInvCipher(uint8x16_t state, const struct Aes128Cbc_RoundKey *roundKey)
 {
     const struct Aes128Cbc_Key *round = roundKey->round;
     for (uint32_t k = 10; k > 1; --k) {
