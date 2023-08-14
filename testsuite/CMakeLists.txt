@@ -7,17 +7,22 @@ file(COPY
 
 enable_testing()
 
+add_executable(testsuite)
+
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin"
         AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
     set(SOURCES aarch64_main.cxx)
+elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+    set(OPTIONS -msse3 -maes)
+    set(SOURCES x86_64_main.cxx)
 else()
     set(SOURCES main.cxx)
 endif()
 
-add_executable(testsuite 
+target_compile_options(testsuite PUBLIC ${OPTIONS})
+target_sources(testsuite PUBLIC
     ${SOURCES}
     expect.hxx expect_fallback.hxx)
-
 target_include_directories(testsuite PRIVATE
     mimicssl-aes128-cbc-decrypt
     ${CMAKE_SOURCE_DIR}/libmimicssl-aes128-cbc-decrypt/src
