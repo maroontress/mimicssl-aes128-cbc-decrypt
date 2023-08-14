@@ -9,7 +9,19 @@ enable_testing()
 
 add_executable(testsuite)
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin"
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+    if("${CMAKE_ANDROID_ARCH_ABI}" STREQUAL "arm64-v8a")
+        set(SOURCES arm_v7_main.cxx)
+    elseif("${CMAKE_ANDROID_ARCH_ABI}" STREQUAL "armeabi-v7a")
+        set(OPTIONS -mfpu=neon)
+        set(SOURCES arm_v7_main.cxx)
+    elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+        set(OPTIONS -msse3 -maes)
+        set(SOURCES x86_64_main.cxx)
+    else()
+        set(SOURCES main.cxx)
+    endif()
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin"
         AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
     set(SOURCES aarch64_main.cxx)
 elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
@@ -31,4 +43,4 @@ target_include_directories(testsuite PRIVATE
 target_link_libraries(testsuite mimicssl-aes128-cbc-decrypt)
 
 include(GoogleTest)
-gtest_discover_tests(testsuite)
+gtest_discover_tests(testsuite DISCOVERY_TIMEOUT 50)
