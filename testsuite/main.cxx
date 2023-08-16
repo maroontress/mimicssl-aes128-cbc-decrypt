@@ -298,22 +298,12 @@ main(int ac, char** av)
             expect(actual[k]) == expected[k];
         }
     });
-    driver.add("invShiftRows", [] {
+    driver.add("invShiftRowsSubBytes", [] {
         auto state = toState("d41d8cd98f00b204e9800998ecf8427e");
-        auto newState = invShiftRows(&state);
+        auto newState = invShiftRowsSubBytes(&state);
         dump(newState);
         auto actual = newState.data;
-        auto expected = toArray("d4f809048f1d4298e9008c7eec80b2d9");
-        for (auto k = 0; k < 16; ++k) {
-            expect(actual[k]) == expected[k];
-        }
-    });
-    driver.add("invSubBytes", [] {
-        auto state = toState("d41d8cd98f00b204e9800998ecf8427e");
-        auto newState = invSubBytes(&state);
-        dump(newState);
-        auto actual = newState.data;
-        auto expected = toArray("19def0e573523e30eb3a40e283e1f68a");
+        auto expected = toArray("19e1403073def6e2eb52f08a833a3ee5");
         for (auto k = 0; k < 16; ++k) {
             expect(actual[k]) == expected[k];
         }

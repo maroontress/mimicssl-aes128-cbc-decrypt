@@ -13,11 +13,6 @@ struct State {
     uint8_t data[16];
 };
 
-static const uint32_t M0 = 0x000000ff;
-static const uint32_t M1 = 0x0000ff00;
-static const uint32_t M2 = 0x00ff0000;
-static const uint32_t M3 = 0xff000000;
-
 #include "sbox.h"
 #include "rsbox.h"
 #include "rcon.h"
@@ -69,47 +64,31 @@ addRoundKey(const struct State *state, const struct Aes128Cbc_Key *key)
 }
 
 static struct State
-invShiftRows(const struct State *state)
+invShiftRowsSubBytes(const struct State *state)
 {
-    uint32_t *data = (uint32_t *)state->data;
-    uint32_t a0 = data[0];
-    uint32_t a1 = data[1];
-    uint32_t a2 = data[2];
-    uint32_t a3 = data[3];
-
     struct State newState;
-    uint32_t *out = (uint32_t *)newState.data;
+
+    const uint8_t *s = (const uint8_t *)state->data;
+    uint8_t *o = newState.data;
     // 0 1 2 3 4 5 6 7 8 9 A B C D E F
     // |       |       |       |
     // 0 D A 7 4 1 E B 8 5 2 F C 9 6 3
-    out[0] = (a0 & M0) | (a3 & M1) | (a2 & M2) | (a1 & M3);
-    out[1] = (a1 & M0) | (a0 & M1) | (a3 & M2) | (a2 & M3);
-    out[2] = (a2 & M0) | (a1 & M1) | (a0 & M2) | (a3 & M3);
-    out[3] = (a3 & M0) | (a2 & M1) | (a1 & M2) | (a0 & M3);
-    return newState;
-}
-
-static struct State
-invSubBytes(const struct State *state)
-{
-    struct State newState;
-
-    const uint32_t *data = (const uint32_t *)state->data;
-    uint32_t *out = (uint32_t *)newState.data;
-
-    for (uint32_t k = 0; k < 4; ++k) {
-        uint32_t d = *data;
-        uint8_t d0 = (uint8_t)d;
-        uint8_t d1 = (uint8_t)(d >> 8);
-        uint8_t d2 = (uint8_t)(d >> 16);
-        uint8_t d3 = (uint8_t)(d >> 24);
-        *out = ((uint32_t)RSBOX[d3] << 24)
-            | ((uint32_t)RSBOX[d2] << 16)
-            | ((uint32_t)RSBOX[d1] << 8)
-            | (uint32_t)RSBOX[d0];
-        ++data;
-        ++out;
-    }
+    o[0] = RSBOX[s[0]];
+    o[1] = RSBOX[s[13]];
+    o[2] = RSBOX[s[10]];
+    o[3] = RSBOX[s[7]];
+    o[4] = RSBOX[s[4]];
+    o[5] = RSBOX[s[1]];
+    o[6] = RSBOX[s[14]];
+    o[7] = RSBOX[s[11]];
+    o[8] = RSBOX[s[8]];
+    o[9] = RSBOX[s[5]];
+    o[10] = RSBOX[s[2]];
+    o[11] = RSBOX[s[15]];
+    o[12] = RSBOX[s[12]];
+    o[13] = RSBOX[s[9]];
+    o[14] = RSBOX[s[6]];
+    o[15] = RSBOX[s[3]];
     return newState;
 }
 
@@ -190,14 +169,12 @@ eqInvCipher(const struct State *state, const struct Aes128Cbc_RoundKey *roundKey
     struct State newState = addRoundKey(state, key);
     for (uint32_t round = 9; round > 0; --round) {
         --key;
-        newState = invSubBytes(&newState);
-        newState = invShiftRows(&newState);
+        newState = invShiftRowsSubBytes(&newState);
         newState = invMixColumns(&newState);
         newState = addRoundKey(&newState, key);
     }
     --key;
-    newState = invSubBytes(&newState);
-    newState = invShiftRows(&newState);
+    newState = invShiftRowsSubBytes(&newState);
     return addRoundKey(&newState, key);
 }
 
