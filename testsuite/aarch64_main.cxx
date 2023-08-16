@@ -127,7 +127,7 @@ toKey(const std::string& m) -> Aes128Cbc_Key
 }
 
 static auto
-toState(const std::string& m) -> uint16x8_t
+toState(const std::string& m) -> uint8x16_t
 {
     auto array = toArray(m);
     auto state = vld1q_u8(array.data());
@@ -150,7 +150,7 @@ dump(const uint8_t* b)
 }
 
 static void
-dump(uint16x8_t state)
+dump(uint8x16_t state)
 {
     uint8_t data[16];
     vst1q_u8(data, state);

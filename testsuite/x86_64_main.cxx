@@ -108,7 +108,7 @@ toArray(const std::string& m) -> std::array<std::uint8_t, 16>
 }
 
 #include "Aes128Cbc.h"
-#include "x86_64-aesni-Aes128Cbc.c"
+#include "x86_64_Aes128Cbc.c"
 #include "evp.h"
 
 static auto
