@@ -59,49 +59,32 @@ addRoundKey(uint8x16_t state, const struct Aes128Cbc_Key *key)
 }
 
 static uint8x16_t
-invShiftRows(uint8x16_t state)
+invShiftRowsSubBytes(uint8x16_t state)
 {
-    // 0 1 2 3 4 5 6 7 8 9 A B C D E F <- s
+    uint8_t s[16];
+    uint8_t o[16];
+
+    // 0 1 2 3 4 5 6 7 8 9 A B C D E F
     // |       |       |       |
     // 0 D A 7 4 1 E B 8 5 2 F C 9 6 3
-    uint8x16_t m0 = {
-        0xff, 0, 0, 0,
-        0xff, 0, 0, 0,
-        0xff, 0, 0, 0,
-        0xff, 0, 0, 0};
-    uint8x16_t a = vandq_u8(state, m0);
-
-    // C D E F 0 1 2 3 4 5 6 7 8 9 A B <- (s >>> 32) <- vextq_u8(s,s,4)
-    //   |       |       |       |
-    // 0 D A 7 4 1 E B 8 5 2 F C 9 6 3
-    uint8x16_t m1 = vextq_u8(m0, m0, 1);
-    uint8x16_t b = vandq_u8(vextq_u8(state, state, 4), m1);
-
-    // 8 9 A B C D E F 0 1 2 3 4 5 6 7 <- (s >>> 64) <- vextq_u8(s,s,8)
-    //     |       |       |       |
-    // 0 D A 7 4 1 E B 8 5 2 F C 9 6 3
-    uint8x16_t m2 = vextq_u8(m0, m0, 2);
-    uint8x16_t c = vandq_u8(vextq_u8(state, state, 8), m2);
-
-    // 4 5 6 7 8 9 A B C D E F 0 1 2 3 <- (s >>> 96) <- vextq_u8(s,s,12)
-    //       |       |       |       |
-    // 0 D A 7 4 1 E B 8 5 2 F C 9 6 3
-    uint8x16_t m3 = vextq_u8(m0, m0, 3);
-    uint8x16_t d = vandq_u8(vextq_u8(state, state, 12), m3);
-
-    return vorrq_u8(vorrq_u8(a, b), vorrq_u8(c, d));
-}
-
-static uint8x16_t
-invSubBytes(uint8x16_t state)
-{
-    uint8_t data[16];
-
-    vst1q_u8(data, state);
-    for (uint32_t k = 0; k < 16; ++k) {
-        data[k] = RSBOX[data[k]];
-    }
-    return vld1q_u8(data);
+    vst1q_u8(s, state);
+    o[0] = RSBOX[s[0]];
+    o[1] = RSBOX[s[13]];
+    o[2] = RSBOX[s[10]];
+    o[3] = RSBOX[s[7]];
+    o[4] = RSBOX[s[4]];
+    o[5] = RSBOX[s[1]];
+    o[6] = RSBOX[s[14]];
+    o[7] = RSBOX[s[11]];
+    o[8] = RSBOX[s[8]];
+    o[9] = RSBOX[s[5]];
+    o[10] = RSBOX[s[2]];
+    o[11] = RSBOX[s[15]];
+    o[12] = RSBOX[s[12]];
+    o[13] = RSBOX[s[9]];
+    o[14] = RSBOX[s[6]];
+    o[15] = RSBOX[s[3]];
+    return vld1q_u8(o);
 }
 
 static uint8x16_t
@@ -164,14 +147,12 @@ eqInvCipher(uint8x16_t state, const struct Aes128Cbc_RoundKey *roundKey)
     uint8x16_t newState = addRoundKey(state, key);
     for (uint32_t round = 9; round > 0; --round) {
         --key;
-        newState = invSubBytes(newState);
-        newState = invShiftRows(newState);
+        newState = invShiftRowsSubBytes(newState);
         newState = invMixColumns(newState);
         newState = addRoundKey(newState, key);
     }
     --key;
-    newState = invSubBytes(newState);
-    newState = invShiftRows(newState);
+    newState = invShiftRowsSubBytes(newState);
     return addRoundKey(newState, key);
 }
 
