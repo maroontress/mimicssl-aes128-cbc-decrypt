@@ -1,0 +1,29 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Build
+        run: |
+          sh build-ios.sh "$HOME/ios"
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios
+          path: ~/ios/

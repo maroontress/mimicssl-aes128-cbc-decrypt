@@ -25,6 +25,20 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
     else()
         set(SOURCES src/evp.c src/Aes128Cbc.c)
     endif()
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS")
+    if("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "arm64")
+        set(SOURCES src/evp.c src/aarch64_Aes128Cbc.c)
+    elseif("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "x86_64")
+        set(OPTIONS -msse3 -maes)
+        set(SOURCES src/evp.c src/x86_64_Aes128Cbc.c)
+    endif()
+    set_target_properties(mimicssl-aes128-cbc-decrypt-shared PROPERTIES
+        XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+        XCODE_ATTRIBUTE_ENABLE_BITCODE "NO"
+        MACOSX_BUNDLE_BUNDLE_NAME mimicssl-aes128-cbc-decrypt
+        MACOSX_BUNDLE_BUNDLE_VERSION 1.0
+        MACOSX_BUNDLE_SHORT_VERSION_STRING 1.0
+        MACOSX_BUNDLE_LONG_VERSION_STRING 1.0)
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin"
         AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
     set(SOURCES src/evp.c src/aarch64_Aes128Cbc.c)
