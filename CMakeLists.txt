@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 
-project("mimicssl-aes128-cbc" VERSION 1.0.0)
+project("mimicssl-aes128-cbc" VERSION 1.0.2)
 
 cmake_policy(SET CMP0142 NEW)
 
