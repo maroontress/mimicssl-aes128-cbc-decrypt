@@ -10,20 +10,94 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  build:
+  build_non_fat:
     runs-on: macos-latest
     timeout-minutes: 30
-
+    strategy:
+      max-parallel: 3
+      matrix:
+        abi: [x86_64, arm64]
+        sdk: [iphoneos, iphonesimulator]
+        exclude:
+          - abi: x86_64
+            sdk: iphoneos
+    steps:
+      - name: get-cmake
+        uses: lukka/get-cmake@v3.27.4
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          lfs: true
+      - name: Build ${{matrix.abi}}
+        run: |
+          sh ios.sh build build-non-fat ${{matrix.sdk}} ${{matrix.abi}}
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: build
+          if-no-files-found: error
+  install_and_test:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    needs: build_non_fat
+    steps:
+      - name: get-cmake
+        uses: lukka/get-cmake@v3.27.4
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          lfs: true
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+      - name: Run simulator
+        run: |
+          runtime=$(xcrun simctl list runtimes iOS -j | jq '.runtimes[].identifier' | tail -1)
+          udid=$(xcrun simctl list devices iPhone available -j | jq '.devices['$runtime']|.[].udid' | tail -1)
+          xcrun simctl bootstatus $(eval echo $udid) -b
+      - name: Test
+        run: |
+          ctest --test-dir build/iphonesimulator-x86_64 -C Release
+      - name: Archive artifacts (testsuite)
+        if: ${{failure()}}
+        uses: actions/upload-artifact@v3
+        with:
+          name: testsuite
+          path: ${{github.workspace}}/build/iphonesimulator-x86_64/
+      - name: Install fat files and XCFrameworks
+        run: |
+          sh ios.sh build install "$HOME/ios"
+      - name: Archive artifacts (xcframework)
+        uses: actions/upload-artifact@v3
+        with:
+          name: xcframework
+          path: ~/ios
+          if-no-files-found: error
+  build-simply:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    if: ${{false}}
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
-
+          lfs: true
+      - name: Configure
+        run: sh ios.sh build configure
       - name: Build
-        run: |
-          sh build-ios.sh "$HOME/ios"
+        run: sh ios.sh build build
+      - name: Install
+        run: sh ios.sh build install $HOME/ios
       - name: Archive artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ios
           path: ~/ios/
+      - name: Run simulator
+        run: |
+          runtime=$(xcrun simctl list runtimes iOS -j | jq '.runtimes[].identifier' | tail -1)
+          udid=$(xcrun simctl list devices iPhone available -j | jq '.devices['$runtime']|.[].udid' | tail -1)
+          xcrun simctl bootstatus $(eval echo $udid) -b
+      - name: Test
+        run: |
+          ctest --test-dir build/iphonesimulator-x86_64 -C Release
