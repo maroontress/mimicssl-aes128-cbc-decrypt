@@ -32,6 +32,7 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS")
         XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
         XCODE_ATTRIBUTE_ENABLE_BITCODE "NO"
         MACOSX_BUNDLE_BUNDLE_NAME mimicssl-aes128-cbc-decrypt-testsuite
+        MACOSX_BUNDLE_GUI_IDENTIFIER mimicssl-aes128-cbc-decrypt-testsuite
         MACOSX_BUNDLE_BUNDLE_VERSION 1.0
         MACOSX_BUNDLE_SHORT_VERSION_STRING 1.0
         MACOSX_BUNDLE_LONG_VERSION_STRING 1.0)
@@ -48,7 +49,14 @@ else()
     set(SOURCES main.cxx)
 endif()
 
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS")
+    set(DEFINES IOS_PROCESS_DELAY_WORKAROUND=1)
+else()
+    set(DEFINES IOS_PROCESS_DELAY_WORKAROUND=0)
+endif()
+
 target_compile_options(testsuite PUBLIC ${OPTIONS})
+target_compile_definitions(testsuite PUBLIC ${DEFINES})
 target_sources(testsuite PUBLIC
     ${SOURCES}
     expect.hxx expect_fallback.hxx)

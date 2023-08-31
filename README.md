@@ -86,11 +86,60 @@ but a typical configuration would be as follows:
 
 Then build as follows:
 
-```
-sh build-android.sh ABI -DBUILD_TESTSUITE=OFF
+```sh
+abi=ABI
+build_dir=BUILD_DIR
+sh android.sh $build_dir configure $abi -G Ninja \
+    -DCMAKE_MAKE_PROGRAM="/path/to/ninja" \
+    -DCMAKE_INSTALL_PREFIX:PATH="/path/to/dir"
+cmake --build $build_dir/$abi --config Release -v
+cmake --install $build_dir/$abi
 ```
 
 `ABI` should be replaced by `arm64-v8a`, `armeabi-v7a`, `x86`, or `x86_64`.
+`BUILD_DIR` should be replaced by the build directory (e.g., `build-android`).
+Note that `ninja` is required on Windows.
+
+Before running `testsuite`, start Android Emulator as follows:
+
+```sh
+$ANDROID_HOME/emulator/emulator -avd AVD_NAME -no-snapshot
+```
+
+`AVD_NAME` should be replaced by the AVD name. Note that You can get the list of
+AVD names as follows:
+
+```sh
+$ANDROID_HOME/emulator/emulator -list-avds
+```
+
+Then run `testusite` as follows:
+
+```sh
+sh android.sh $build_dir test $abi
+```
+
+## Build for iOS
+
+Build on macOS as follows:
+
+```sh
+build_dir=BUILD_DIR
+sh ios.sh $build_dir configure
+sh ios.sh $build_dir build
+sh ios.sh $build_dir install /path/to/dir
+```
+
+`BUILD_DIR` should be replaced by the build directory (e.g., `build-ios`).
+
+You can run `testsuite` with the iPhone simulator as follows:
+
+```sh
+sh ios.sh $build_dir test ARCH
+```
+
+`ARCH` should be replaced by `arm64` or `x86_64`. Note that `jq` is required to
+run the iPhone simulator.
 
 [wikipedia::aes]: https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
 [openssl::EVP_DecryptInit_ex]: https://www.openssl.org/docs/man1.1.1/man3/EVP_DecryptInit_ex.html

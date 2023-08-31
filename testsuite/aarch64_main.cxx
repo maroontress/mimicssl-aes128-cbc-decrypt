@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <thread>
 
 #include "expect.hxx"
 
@@ -246,6 +247,9 @@ compare(const char* fileOne, const char* fileTwo)
 int
 main(int ac, char** av)
 {
+    if (IOS_PROCESS_DELAY_WORKAROUND) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
     auto driver = Driver {av};
     driver.add("keyExpansion (test vector)", [] {
         auto key = toArray("2b7e151628aed2a6abf7158809cf4f3c");
