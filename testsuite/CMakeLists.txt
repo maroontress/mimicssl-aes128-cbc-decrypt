@@ -38,6 +38,9 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS")
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin"
         AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
     set(SOURCES aarch64_main.cxx)
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows"
+        AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "AMD64")
+    set(SOURCES x86_64_main.cxx)
 elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
     set(OPTIONS -msse3 -maes)
     set(SOURCES x86_64_main.cxx)
