@@ -60,4 +60,6 @@ target_include_directories(testsuite PRIVATE
 target_link_libraries(testsuite mimicssl-aes128-cbc-decrypt)
 
 include(GoogleTest)
-gtest_discover_tests(testsuite DISCOVERY_TIMEOUT 50)
+gtest_discover_tests(testsuite
+    DISCOVERY_TIMEOUT 50
+    DISCOVERY_MODE PRE_TEST)

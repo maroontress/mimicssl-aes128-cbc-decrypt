@@ -41,7 +41,7 @@ if [ "$1" = "--gtest_list_tests" ] ; then
     echo devices: >> $LOG
     $ADB devices >> $LOG
     $ADB push testsuite $REMOTE_DIR/testsuite >> $LOG
-    $ADB shell chmod +x $REMOTE_DIR/testsuite >> $LOG
+    $ADB shell chmod 755 $REMOTE_DIR/testsuite >> $LOG
 fi
 
 n="'"

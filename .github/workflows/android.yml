@@ -1,4 +1,4 @@
-name: CMake (Android)
+name: Android
 
 on:
   push:
@@ -51,13 +51,22 @@ jobs:
         with:
           submodules: true
           lfs: true
+      - name: Configure ${{matrix.abi}}
+        shell: bash
+        run: |
+          sh android.sh build configure ${{matrix.abi}} \
+            -G Ninja -DCMAKE_MAKE_PROGRAM=${{env.ninja}} \
+            -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
+        env:
+          ANDROID_NDK: ${{env.android_ndk}}
       - name: Build ${{matrix.abi}}
         shell: bash
         run: |
-          sh build-android.sh ${{matrix.abi}} -G Ninja -DCMAKE_MAKE_PROGRAM=${{env.ninja}} -DBUILD_TESTSUITE=OFF -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
-          cmake --install build-${{matrix.abi}}
-        env:
-          ANDROID_NDK: ${{env.android_ndk}}
+          cmake --build build/${{matrix.abi}} --config Release -v
+      - name: Install ${{matrix.abi}}
+        shell: bash
+        run: |
+          cmake --install build/${{matrix.abi}}
       - name: Archive artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -77,7 +86,12 @@ jobs:
         with:
           submodules: true
           lfs: true
-
+      - name: Configure ${{matrix.abi}}
+        run: |
+          sh android.sh build configure ${{matrix.abi}}
+      - name: Build ${{matrix.abi}}
+        run: |
+          cmake --build build/${{matrix.abi}} --config Release -v
       - name: AVD cache
         uses: actions/cache@v3
         id: avd-cache
@@ -106,7 +120,7 @@ jobs:
           ndk: 25.2.9519653
           force-avd-creation: false
           disable-animations: true
-          script: sh build-android.sh ${{matrix.abi}} -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
+          script: sh android.sh build test ${{matrix.abi}}
       - name: Archive artifacts
         uses: actions/upload-artifact@v3
         with:
