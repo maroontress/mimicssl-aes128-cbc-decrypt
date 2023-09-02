@@ -19,59 +19,46 @@ jobs:
     runs-on: ${{matrix.os}}
 
     steps:
-      - name: Set up env
-        shell: bash
-        run: |
-          echo home_bin="$HOME/bin" >> "$GITHUB_ENV"
-          echo ninja="$HOME/bin/ninja" >> "$GITHUB_ENV"
-      - name: Set up on Windows
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          echo ninja_zip="ninja-win.zip" >> "$GITHUB_ENV"
-          echo android_ndk="$(cygpath -u $ANDROID_NDK)" >> "$GITHUB_ENV"
-      - name: Set up on Linux
-        if: runner.os == 'Linux'
-        run: |
-          echo ninja_zip="ninja-linux.zip" >> "$GITHUB_ENV"
-          echo android_ndk="$ANDROID_NDK" >> "$GITHUB_ENV"
-      - name: Set up on macOS
-        if: runner.os == 'macOS'
-        run: |
-          echo ninja_zip="ninja-mac.zip" >> "$GITHUB_ENV"
-          echo android_ndk="$ANDROID_NDK" >> "$GITHUB_ENV"
-      - name: Install ninja
-        shell: bash
-        run: |
-          mkdir -p ${{env.home_bin}}
-          curl -L -o ninja.zip "https://github.com/ninja-build/ninja/releases/download/v1.11.1/${{env.ninja_zip}}"
-          unzip ninja.zip -d ${{env.home_bin}}
+    - name: Set up on Windows
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        echo NINJA_ZIP="ninja-win.zip" >> "$GITHUB_ENV"
+        echo ANDROID_NDK="$(cygpath -u $ANDROID_NDK)" >> "$GITHUB_ENV"
+    - name: Set up on Linux
+      if: runner.os == 'Linux'
+      run: echo NINJA_ZIP="ninja-linux.zip" >> "$GITHUB_ENV"
+    - name: Set up on macOS
+      if: runner.os == 'macOS'
+      run: echo NINJA_ZIP="ninja-mac.zip" >> "$GITHUB_ENV"
+    - name: Install ninja
+      shell: bash
+      run: |
+        mkdir -p "$HOME/bin"
+        curl -L -o ninja.zip "https://github.com/ninja-build/ninja/releases/download/v1.11.1/$NINJA_ZIP"
+        unzip ninja.zip -d "$HOME/bin"
 
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-          lfs: true
-      - name: Configure ${{matrix.abi}}
-        shell: bash
-        run: |
-          sh android.sh build configure ${{matrix.abi}} \
-            -G Ninja -DCMAKE_MAKE_PROGRAM=${{env.ninja}} \
-            -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
-        env:
-          ANDROID_NDK: ${{env.android_ndk}}
-      - name: Build ${{matrix.abi}}
-        shell: bash
-        run: |
-          cmake --build build/${{matrix.abi}} --config Release -v
-      - name: Install ${{matrix.abi}}
-        shell: bash
-        run: |
-          cmake --install build/${{matrix.abi}}
-      - name: Archive artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: android-${{matrix.os}}
-          path: ~/android/
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        lfs: true
+    - name: Configure ${{matrix.abi}}
+      shell: bash
+      run: |
+        sh android.sh build configure ${{matrix.abi}} \
+          -G Ninja -DCMAKE_MAKE_PROGRAM="$HOME/bin/ninja" \
+          -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
+    - name: Build ${{matrix.abi}}
+      shell: bash
+      run: cmake --build build/${{matrix.abi}} --config Release -v
+    - name: Install ${{matrix.abi}}
+      shell: bash
+      run: cmake --install build/${{matrix.abi}}
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: android-${{matrix.os}}
+        path: ~/android/
 
   test:
     timeout-minutes: 30
@@ -82,47 +69,45 @@ jobs:
     runs-on: ${{matrix.os}}
 
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-          lfs: true
-      - name: Configure ${{matrix.abi}}
-        run: |
-          sh android.sh build configure ${{matrix.abi}}
-      - name: Build ${{matrix.abi}}
-        run: |
-          cmake --build build/${{matrix.abi}} --config Release -v
-      - name: AVD cache
-        uses: actions/cache@v3
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: hostos-${{matrix.os}}-api-21-abi-${{matrix.abi}}
-      - name: Create AVD and generate snapshot for caching
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
-          api-level: 21
-          arch: ${{matrix.abi}}
-          ndk: 25.2.9519653
-          force-avd-creation: false
-          disable-animations: false
-          script: echo "Generated AVD snapshot for caching."
-      - name: Run tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
-          api-level: 21
-          arch: ${{matrix.abi}}
-          ndk: 25.2.9519653
-          force-avd-creation: false
-          disable-animations: true
-          script: sh android.sh build test ${{matrix.abi}}
-      - name: Archive artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: android-testsuite-${{matrix.os}}-${{matrix.abi}}
-          path: build-${{matrix.abi}}/testsuite/log.txt
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        lfs: true
+    - name: Configure ${{matrix.abi}}
+      run: sh android.sh build configure ${{matrix.abi}}
+    - name: Build ${{matrix.abi}}
+      run: cmake --build build/${{matrix.abi}} --config Release -v
+    - name: AVD cache
+      uses: actions/cache@v3
+      id: avd-cache
+      with:
+        path: |
+          ~/.android/avd/*
+          ~/.android/adb*
+        key: hostos-${{matrix.os}}-api-21-abi-${{matrix.abi}}
+    - name: Create AVD and generate snapshot for caching
+      if: steps.avd-cache.outputs.cache-hit != 'true'
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
+        api-level: 21
+        arch: ${{matrix.abi}}
+        ndk: 25.2.9519653
+        force-avd-creation: false
+        disable-animations: false
+        script: echo "Generated AVD snapshot for caching."
+    - name: Run tests
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
+        api-level: 21
+        arch: ${{matrix.abi}}
+        ndk: 25.2.9519653
+        force-avd-creation: false
+        disable-animations: true
+        script: sh android.sh build test ${{matrix.abi}}
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: android-testsuite-${{matrix.os}}-${{matrix.abi}}
+        path: build/${{matrix.abi}}/testsuite/log.txt
