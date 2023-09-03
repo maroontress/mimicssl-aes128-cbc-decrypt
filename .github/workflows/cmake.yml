@@ -10,10 +10,10 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  build:
+  single_config:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{matrix.os}}
 
     steps:
@@ -21,15 +21,39 @@ jobs:
       with:
         submodules: true
         lfs: true
-
     - name: Configure CMake
       shell: bash
       run: cmake -S . -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+    - name: Build
+      shell: bash
+      run: cmake --build build
+    - name: Test
+      shell: bash
+      run: ctest --test-dir build -V
+    - name: Install
+      shell: bash
+      run: cmake --install build --prefix=$HOME/mimicssl
 
+  multi_config:
+    strategy:
+      matrix:
+        os: [windows-latest]
+    runs-on: ${{matrix.os}}
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        lfs: true
+    - name: Configure CMake
+      shell: bash
+      run: cmake -S . -B build
     - name: Build
       shell: bash
       run: cmake --build build --config $BUILD_TYPE
-
     - name: Test
       shell: bash
-      run: ctest --test-dir build -C $BUILD_TYPE -V
+      run: ctest --test-dir build -V -C $BUILD_TYPE
+    - name: Install
+      shell: bash
+      run: cmake --install build --config $BUILD_TYPE --prefix=$HOME/mimicssl

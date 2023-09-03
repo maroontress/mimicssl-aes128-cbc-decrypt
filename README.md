@@ -52,19 +52,29 @@ int decrypt(FILE *in, FILE *out)
 
 ## Build
 
-This repository uses [lighter][maroontress::lighter] for testing as a sub-module
-of Git. Therefore, clone it as follows:
+This repository uses [lighter][maroontress::lighter] for testing as a submodule
+of Git. So clone it as follows:
 
 ```plaintext
 git clone --recursive URL
 ```
 
-Then build the library as follows:
+Then build the library on macOS or Linux as follows:
 
 ```textplain
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build
+cmake --install build --prefix=/path/to/dir
+```
+
+Or on Windows as follows:
+
+```textplain
+cmake -S . -B build
 cmake --build build --config Release
 ctest --test-dir build -C Release
+cmake --install build --config Release --prefix=/path/to/dir
 ```
 
 ## Build for Android
@@ -84,15 +94,16 @@ but a typical configuration would be as follows:
 - Linux: `/home/USERNAME/Android/Sdk`
 - macOS: `/Users/USERNAME/Library/Android/sdk`
 
-Then build as follows:
+Then build the library as follows:
 
 ```sh
 abi=ABI
 build_dir=BUILD_DIR
 sh android.sh $build_dir configure $abi -G Ninja \
     -DCMAKE_MAKE_PROGRAM="/path/to/ninja" \
+    -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX:PATH="/path/to/dir"
-cmake --build $build_dir/$abi --config Release -v
+cmake --build $build_dir/$abi -v
 cmake --install $build_dir/$abi
 ```
 
@@ -121,13 +132,13 @@ sh android.sh $build_dir test $abi
 
 ## Build for iOS
 
-Build on macOS as follows:
+Build the library on macOS as follows:
 
 ```sh
 build_dir=BUILD_DIR
 sh ios.sh $build_dir configure
-sh ios.sh $build_dir build
-sh ios.sh $build_dir install /path/to/dir
+sh ios.sh $build_dir build --config Release
+sh ios.sh $build_dir install /path/to/dir --config Release
 ```
 
 `BUILD_DIR` should be replaced by the build directory (e.g., `build-ios`).
@@ -135,7 +146,7 @@ sh ios.sh $build_dir install /path/to/dir
 You can run `testsuite` with the iPhone simulator as follows:
 
 ```sh
-sh ios.sh $build_dir test ARCH
+sh ios.sh $build_dir test ARCH -C Release
 ```
 
 `ARCH` should be replaced by `arm64` or `x86_64`. Note that `jq` is required to
