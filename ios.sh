@@ -1,18 +1,18 @@
 #!/bin/sh
 
 if [ "$#" = "0" ] ; then
-    echo usage: $0 BUILD_DIR configure
-    echo usage: $0 BUILD_DIR build
-    echo usage: $0 BUILD_DIR install INSTALL_DIR
-    echo usage: $0 BUILD_DIR test ARCH
-    echo usage: $0 BUILD_DIR build-non-fat SDK ARCH
+    echo usage: $0 BUILD_DIR configure [CMAKE_OPTIONS...]
+    echo usage: $0 BUILD_DIR build [CMAKE_OPTIONS...]
+    echo usage: $0 BUILD_DIR install INSTALL_DIR [CMAKE_OPTIONS...]
+    echo usage: $0 BUILD_DIR test ARCH [CTEST_OPTOINS...]
+    echo usage: $0 BUILD_DIR build-non-fat SDK ARCH BUILD_TYPE [CMAKE_OPTIONS...]
     exit 1
 fi
 root_build_dir="$1"
 shift
 
 # Usage:
-#   configure SDK ARCH [CMAKE_OPTIONS]
+#   configure SDK ARCH [CMAKE_OPTIONS...]
 #
 # SDK:
 #   "iphoneos"
@@ -37,7 +37,6 @@ configure() {
     # compile with different configurations for each architecture. Instead, we
     # will use lipo to create the fat file with non-fat files later.
     cmake -S . -B "$build_dir" -G Xcode \
-        -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_SYSTEM_NAME="iOS" \
         -DCMAKE_OSX_ARCHITECTURES="$arch" \
         -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
@@ -48,7 +47,8 @@ configure() {
         "$@" || exit 1
     # WORKAROUND for EFFECTIVE_PLATFORM_NAME
     sed -i .bak -e 's/\${EFFECTIVE_PLATFORM_NAME}/-'$sdk'/' \
-        "$root_build_dir/$sdk-$arch/testsuite/testsuite[1]_include-Release.cmake"
+        "$root_build_dir/$sdk-$arch/testsuite/testsuite[1]_include-Release.cmake" \
+        "$root_build_dir/$sdk-$arch/testsuite/testsuite[1]_include-Debug.cmake"
 }
 
 # Usage:
@@ -70,7 +70,7 @@ print_destination() {
 }
 
 # Usage:
-#   build SDK ARCH
+#   build SDK ARCH [CMAKE_OPTIONS...]
 #
 # SDK:
 #   "iphoneos"
@@ -84,11 +84,12 @@ print_destination() {
 build() {
     sdk="$1"
     arch="$2"
+    shift 2
     build_dir="$root_build_dir/$sdk-$arch"
     destination="$(print_destination $sdk)"
     # Note that the following command does not work:
     #   cmake --install $build_dir
-    cmake --build $build_dir --config Release -v \
+    cmake --build $build_dir -v "$@" \
         -- -sdk $sdk -destination "$destination" || exit 1
 }
 
@@ -122,7 +123,7 @@ install_include() {
 }
 
 # Usage:
-#   cmake_install SDK ARCH
+#   cmake_install SDK ARCH [CMAKE_OPTIONS...]
 #
 # SDK:
 #   "iphoneos"
@@ -136,11 +137,12 @@ install_include() {
 cmake_install() {
     sdk="$1"
     arch="$2"
+    shift 2
     build_dir="$root_build_dir/$sdk-$arch"
     destination="$(print_destination $sdk)"
     # Note that the following command does not work:
     #   cmake --install $build_dir
-    cmake --build $build_dir --target install --config Release -v \
+    cmake --build $build_dir --target install -v "$@" \
         -- -sdk $sdk -destination "$destination" || exit 1
 }
 
@@ -166,6 +168,17 @@ check_arch() {
     esac
 }
 
+check_build_type() {
+    type="$1"
+    case "$type" in
+    Release|Debug)
+        ;;
+    *)
+        echo unknown BUILD_TYPE: $arch
+        exit 1
+    esac
+}
+
 if [ "$#" = "0" ] ; then
     echo COMMAND not specified
     exit 1
@@ -178,18 +191,20 @@ all="iphoneos-arm64 iphonesimulator-arm64 iphonesimulator-x86_64"
 
 case "$command" in
 build-non-fat)
-    if [ "$#" -lt 2 ] ; then
-        echo SDK and ARCH not specified
+    if [ "$#" -lt 3 ] ; then
+        echo SDK, ARCH, and BUILD_TYPE not specified
         exit 1
     fi
     sdk="$1"
     arch="$2"
-    shift 2
+    build_type="$3"
+    shift 3
     check_sdk $sdk
     check_arch $arch
+    check_build_type $build_type
     rm -rf $root_build_dir || exit 1
     configure $sdk $arch "$@" || exit 1
-    build $sdk $arch || exit 1
+    build $sdk $arch --config "$build_type" || exit 1
     ;;
 configure)
     rm -rf $root_build_dir || exit 1
@@ -216,7 +231,7 @@ install)
     for i in $all ; do
         sdk=${i%-*}
         arch=${i#*-}
-        cmake_install $sdk $arch || exit 1
+        cmake_install $sdk $arch "$@" || exit 1
     done
     mkdir -p $dest_dir \
         $dest_dir/iphoneos/include \
@@ -256,7 +271,7 @@ test)
     udid=$(xcrun simctl list devices iPhone available -j \
         | jq '.devices['$runtime']|.[].udid' | tail -1)
     xcrun simctl bootstatus $(eval echo $udid) -b
-    ctest --test-dir "$root_build_dir/iphonesimulator-$arch" -C Release
+    ctest --test-dir "$root_build_dir/iphonesimulator-$arch" "$@"
     ;;
 *)
     echo unknown command: $command

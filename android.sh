@@ -2,7 +2,7 @@
 
 if [ "$#" = 0 ] ; then
     echo usage: $0 BUILD_DIR configure ABI [CMAKE_OPTIONS...]
-    echo usage: $0 BUILD_DIR test ABI
+    echo usage: $0 BUILD_DIR test ABI [CTEST_OPTIONS...]
     exit 1
 fi
 root_build_dir="$1"
@@ -18,8 +18,11 @@ shift
 #   "arm64-v8a"
 #   "armeabi-v7a"
 
-# Options:
+# CMAKE_OPTIONS:
+#   -DCMAKE_BUILD_TYPE=Release
 #   -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/$ABI"
+
+# CTEST_OPTIONS:
 
 check_abi() {
     abi=$1
@@ -53,7 +56,7 @@ configure)
     if [ "$abi" = "armeabi-v7a" ] ; then
         EXTRA_ARGS='-DCMAKE_ANDROID_ARM_NEON=ON'
     fi
-    cmake -S . -B "$build_dir" -DCMAKE_BUILD_TYPE=Release \
+    cmake -S . -B "$build_dir" \
         -DCMAKE_SYSTEM_NAME=Android \
         -DCMAKE_CROSSCOMPILING_EMULATOR="$PWD/emulator-android.sh" \
         -DCMAKE_SYSTEM_VERSION="21" \
@@ -71,7 +74,7 @@ test)
     check_abi $abi
     build_dir="$root_build_dir/$abi"
     sh emulator-android.sh --adb-push "$build_dir/testsuite"
-    ctest --test-dir "$build_dir" -C Release -V || exit 1
+    ctest --test-dir "$build_dir" -V "$@" || exit 1
     sh emulator-android.sh --adb-pull "$build_dir/testsuite"
     ;;
 *)

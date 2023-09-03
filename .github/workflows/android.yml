@@ -22,20 +22,15 @@ jobs:
     - name: Set up on Windows
       if: runner.os == 'Windows'
       shell: bash
-      run: |
-        echo NINJA_ZIP="ninja-win.zip" >> "$GITHUB_ENV"
-        echo ANDROID_NDK="$(cygpath -u $ANDROID_NDK)" >> "$GITHUB_ENV"
-    - name: Set up on Linux
-      if: runner.os == 'Linux'
-      run: echo NINJA_ZIP="ninja-linux.zip" >> "$GITHUB_ENV"
-    - name: Set up on macOS
-      if: runner.os == 'macOS'
-      run: echo NINJA_ZIP="ninja-mac.zip" >> "$GITHUB_ENV"
+      run: echo ANDROID_NDK="$(cygpath -u $ANDROID_NDK)" >> "$GITHUB_ENV"
     - name: Install ninja
       shell: bash
       run: |
+        map_Windows="win" ; map_Linux="linux" ; map_macOS="mac"
+        suffix="$(eval echo '$'map_$RUNNER_OS)"
         mkdir -p "$HOME/bin"
-        curl -L -o ninja.zip "https://github.com/ninja-build/ninja/releases/download/v1.11.1/$NINJA_ZIP"
+        curl -L -o ninja.zip \
+          "https://github.com/ninja-build/ninja/releases/download/v1.11.1/ninja-$suffix.zip"
         unzip ninja.zip -d "$HOME/bin"
 
     - uses: actions/checkout@v3
@@ -47,10 +42,11 @@ jobs:
       run: |
         sh android.sh build configure ${{matrix.abi}} \
           -G Ninja -DCMAKE_MAKE_PROGRAM="$HOME/bin/ninja" \
+          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
           -DCMAKE_INSTALL_PREFIX:PATH="$HOME/android/${{matrix.abi}}"
     - name: Build ${{matrix.abi}}
       shell: bash
-      run: cmake --build build/${{matrix.abi}} --config Release -v
+      run: cmake --build build/${{matrix.abi}} -v
     - name: Install ${{matrix.abi}}
       shell: bash
       run: cmake --install build/${{matrix.abi}}
@@ -74,9 +70,9 @@ jobs:
         submodules: true
         lfs: true
     - name: Configure ${{matrix.abi}}
-      run: sh android.sh build configure ${{matrix.abi}}
+      run: sh android.sh build configure ${{matrix.abi}} -DCMAKE_BUILD_TYPE=$BUILD_TYPE
     - name: Build ${{matrix.abi}}
-      run: cmake --build build/${{matrix.abi}} --config Release -v
+      run: cmake --build build/${{matrix.abi}} -v
     - name: AVD cache
       uses: actions/cache@v3
       id: avd-cache
