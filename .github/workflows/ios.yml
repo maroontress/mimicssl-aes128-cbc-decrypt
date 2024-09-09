@@ -24,16 +24,16 @@ jobs:
     steps:
     - name: get-cmake
       uses: lukka/get-cmake@v3.27.4
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
         lfs: true
     - name: Build ${{matrix.abi}}
       run: sh ios.sh build build-non-fat ${{matrix.sdk}} ${{matrix.abi}} $BUILD_TYPE
     - name: Archive artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: build
+        name: build-${{matrix.sdk}}-${{matrix.abi}}
         path: build
         if-no-files-found: error
   install_and_test:
@@ -43,29 +43,32 @@ jobs:
     steps:
     - name: get-cmake
       uses: lukka/get-cmake@v3.27.4
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
         lfs: true
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
+      with:
+        path: build
+        merge-multiple: true
     - name: Run simulator
       run: |
-        runtime=$(xcrun simctl list runtimes iOS -j | jq '.runtimes[].identifier' | tail -1)
-        udid=$(xcrun simctl list devices iPhone available -j | jq '.devices['$runtime']|.[].udid' | tail -1)
-        xcrun simctl bootstatus $(eval echo $udid) -b
+        runtime=$(xcrun simctl list runtimes iOS -j | jq '.runtimes|last.identifier')
+        udid=$(xcrun simctl list devices iPhone available -j | jq -r ".devices[$runtime]|last.udid")
+        xcrun simctl bootstatus $udid -b
     - name: Test
-      run: ctest --test-dir build/iphonesimulator-x86_64 -C $BUILD_TYPE
+      run: ctest --test-dir build/iphonesimulator-arm64 -C $BUILD_TYPE
     - name: Archive artifacts (testsuite)
       if: ${{failure()}}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: testsuite
-        path: ${{github.workspace}}/build/iphonesimulator-x86_64/
+        path: ${{github.workspace}}/build/iphonesimulator-arm64/
     - name: Install fat files and XCFrameworks
       run: sh ios.sh build install "$HOME/ios" --config $BUILD_TYPE
     - name: Archive artifacts (xcframework)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: xcframework
         path: ~/ios
@@ -75,7 +78,7 @@ jobs:
     timeout-minutes: 30
     if: ${{false}}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
         lfs: true
@@ -86,14 +89,14 @@ jobs:
     - name: Install
       run: sh ios.sh build install $HOME/ios --config $BUILD_TYPE
     - name: Archive artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ios
         path: ~/ios/
     - name: Run simulator
       run: |
-        runtime=$(xcrun simctl list runtimes iOS -j | jq '.runtimes[].identifier' | tail -1)
-        udid=$(xcrun simctl list devices iPhone available -j | jq '.devices['$runtime']|.[].udid' | tail -1)
-        xcrun simctl bootstatus $(eval echo $udid) -b
+        runtime=$(xcrun simctl list runtimes iOS -j | jq '.runtimes|last.identifier')
+        udid=$(xcrun simctl list devices iPhone available -j | jq -r ".devices[$runtime]|last.udid")
+        xcrun simctl bootstatus $udid -b
     - name: Test
-      run: ctest --test-dir build/iphonesimulator-x86_64 -C $BUILD_TYPE
+      run: ctest --test-dir build/iphonesimulator-arm64 -C $BUILD_TYPE
