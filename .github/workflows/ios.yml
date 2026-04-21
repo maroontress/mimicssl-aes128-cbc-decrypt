@@ -24,14 +24,14 @@ jobs:
     steps:
     - name: get-cmake
       uses: lukka/get-cmake@v3.27.4
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
         lfs: true
     - name: Build ${{matrix.abi}}
       run: sh ios.sh build build-non-fat ${{matrix.sdk}} ${{matrix.abi}} $BUILD_TYPE
     - name: Archive artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: build-${{matrix.sdk}}-${{matrix.abi}}
         path: build
@@ -43,12 +43,12 @@ jobs:
     steps:
     - name: get-cmake
       uses: lukka/get-cmake@v3.27.4
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
         lfs: true
     - name: Download artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: build
         merge-multiple: true
@@ -61,14 +61,14 @@ jobs:
       run: ctest --test-dir build/iphonesimulator-arm64 -C $BUILD_TYPE
     - name: Archive artifacts (testsuite)
       if: ${{failure()}}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: testsuite
         path: ${{github.workspace}}/build/iphonesimulator-arm64/
     - name: Install fat files and XCFrameworks
       run: sh ios.sh build install "$HOME/ios" --config $BUILD_TYPE
     - name: Archive artifacts (xcframework)
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: xcframework
         path: ~/ios
@@ -78,7 +78,7 @@ jobs:
     timeout-minutes: 30
     if: ${{false}}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
         lfs: true
@@ -89,7 +89,7 @@ jobs:
     - name: Install
       run: sh ios.sh build install $HOME/ios --config $BUILD_TYPE
     - name: Archive artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ios
         path: ~/ios/

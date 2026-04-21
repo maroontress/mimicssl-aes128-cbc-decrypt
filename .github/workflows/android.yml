@@ -8,17 +8,20 @@ on:
 
 env:
   BUILD_TYPE: Release
+  NDK_VERSION: 29.0.14206865
 
 jobs:
   build:
     timeout-minutes: 30
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-13]
+        os: [windows-latest, ubuntu-latest, macos-latest]
         abi: [x86_64, x86, arm64-v8a, armeabi-v7a]
     runs-on: ${{matrix.os}}
 
     steps:
+    - name: Set ANDROID_NDK path
+      run: echo "ANDROID_NDK=$ANDROID_HOME/ndk/$NDK_VERSION" >> $GITHUB_ENV
     - name: Set up on Windows
       if: runner.os == 'Windows'
       shell: bash
@@ -33,7 +36,7 @@ jobs:
           "https://github.com/ninja-build/ninja/releases/download/v1.11.1/ninja-$suffix.zip"
         unzip ninja.zip -d "$HOME/bin"
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
         lfs: true
@@ -51,7 +54,7 @@ jobs:
       shell: bash
       run: cmake --install build/${{matrix.abi}}
     - name: Archive artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: android-${{matrix.os}}-${{matrix.abi}}
         path: ~/android/
@@ -60,11 +63,13 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-13]
+        os: [ubuntu-latest, macos-15-intel]
         abi: [x86_64]
     runs-on: ${{matrix.os}}
 
     steps:
+    - name: Set ANDROID_NDK path
+      run: echo "ANDROID_NDK=$ANDROID_HOME/ndk/$NDK_VERSION" >> $GITHUB_ENV
     # https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
     # https://github.blog/2024-01-17-github-hosted-runners-double-the-power-for-open-source/
     - name: Enable KVM group perms
@@ -76,7 +81,7 @@ jobs:
           | sudo tee /etc/udev/rules.d/99-kvm4all.rules
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
         lfs: true
@@ -85,7 +90,7 @@ jobs:
     - name: Build ${{matrix.abi}}
       run: cmake --build build/${{matrix.abi}} -v
     - name: AVD cache
-      uses: actions/cache@v3
+      uses: actions/cache@v5
       id: avd-cache
       with:
         path: |
@@ -99,7 +104,7 @@ jobs:
         emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
         api-level: 21
         arch: ${{matrix.abi}}
-        ndk: 25.2.9519653
+        ndk: ${{env.NDK_VERSION}}
         force-avd-creation: false
         disable-animations: false
         script: echo "Generated AVD snapshot for caching."
@@ -109,12 +114,12 @@ jobs:
         emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
         api-level: 21
         arch: ${{matrix.abi}}
-        ndk: 25.2.9519653
+        ndk: ${{env.NDK_VERSION}}
         force-avd-creation: false
         disable-animations: true
         script: sh android.sh build test ${{matrix.abi}}
     - name: Archive artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v7
       with:
         name: android-testsuite-${{matrix.os}}-${{matrix.abi}}
         path: build/${{matrix.abi}}/testsuite/log.txt

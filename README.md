@@ -84,7 +84,7 @@ example:
 
 ```sh
 export ANDROID_HOME=/usr/local/lib/android/sdk
-export ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653
+export ANDROID_NDK=$ANDROID_HOME/ndk/29.0.14206865
 ```
 
 Note that the value of `ANDROID_HOME` will vary depending on your environment,
